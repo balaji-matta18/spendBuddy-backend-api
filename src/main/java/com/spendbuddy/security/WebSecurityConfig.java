@@ -15,6 +15,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 
 @Configuration
 @EnableMethodSecurity(prePostEnabled = true)
@@ -51,10 +56,38 @@ public class WebSecurityConfig {
 		return new BCryptPasswordEncoder();
 	}
 
+	/**
+	 * ✅ Configure CORS to allow frontend communication
+	 */
+	@Bean
+	public CorsConfigurationSource corsConfigurationSource() {
+		CorsConfiguration configuration = new CorsConfiguration();
+
+		// Allow specific frontend origins (add more if needed)
+		configuration.setAllowedOrigins(Arrays.asList(
+				"http://localhost:8080",
+				"http://localhost:5173"
+		));
+
+		configuration.setAllowCredentials(true);
+		configuration.addAllowedHeader("*");
+		configuration.addAllowedMethod("*");
+		configuration.addExposedHeader("Authorization");
+
+		UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+		source.registerCorsConfiguration("/**", configuration);
+		return source;
+	}
+
+	/**
+	 * ✅ Main security filter chain (modern Spring Security syntax)
+	 */
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
 				.csrf(csrf -> csrf.disable())
+				// ✅ Use new lambda-style CORS config
+				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
 				.exceptionHandling(exception -> exception.authenticationEntryPoint(unauthorizedHandler))
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth

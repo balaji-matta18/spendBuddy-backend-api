@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -60,21 +61,31 @@ public class RestExceptionHandler extends ResponseEntityExceptionHandler {
 		return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
 	}
 
-//	@Override
-	protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException ex,
-			HttpHeaders headers, HttpStatus status, WebRequest request) {
-		 Map<String, List<String>> body = new HashMap<>();
 
-		    List<String> errors = ex.getBindingResult()
-		        .getAllErrors()
-		        .stream()
-		        .map(DefaultMessageSourceResolvable::getDefaultMessage)
-		        .collect(Collectors.toList());
+@Override
+protected ResponseEntity<Object> handleMethodArgumentNotValid(
+		MethodArgumentNotValidException ex,
+		HttpHeaders headers,
+		HttpStatusCode status,
+		WebRequest request) {
 
-		    body.put("errors", errors);
+	Map<String, Object> body = new HashMap<>();
+	body.put("status", HttpStatus.BAD_REQUEST.value());
 
-		    return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
-	}
+	Map<String, String> errors = ex.getBindingResult()
+			.getFieldErrors()
+			.stream()
+			.collect(Collectors.toMap(
+					fieldError -> fieldError.getField(),
+					fieldError -> fieldError.getDefaultMessage(),
+					(existing, replacement) -> existing   // handle duplicate keys
+			));
+
+	body.put("errors", errors);
+
+	return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+}
+
 
 //	@Override
 	protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatus status, WebRequest request) {

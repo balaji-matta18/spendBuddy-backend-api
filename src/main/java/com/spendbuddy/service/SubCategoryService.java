@@ -1,15 +1,13 @@
 package com.spendbuddy.service;
 
-
 import com.spendbuddy.entity.auth.User;
-import com.spendbuddy.entity.expensetracker.Category;
+import com.spendbuddy.entity.budget.Budget;
 import com.spendbuddy.entity.expensetracker.SubCategory;
 import com.spendbuddy.exception.handler.EntityException;
-import com.spendbuddy.repository.CategoryRepository;
+import com.spendbuddy.repository.BudgetRepository;
 import com.spendbuddy.repository.SubCategoryRepository;
 import com.spendbuddy.repository.UserRepository;
 import com.spendbuddy.request.dto.SubCategoryRequest;
-import com.spendbuddy.response.dto.SubCategoryResponse;
 import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -21,37 +19,63 @@ import java.util.List;
 @Service
 public class SubCategoryService {
 
+	@Autowired
+	private SubCategoryRepository subCategoryRepository;
+
+	@Autowired
+	private BudgetRepository budgetRepository;
 
 	@Autowired
 	private UserRepository userRepository;
 
-	@Autowired
-	private CategoryRepository categoryRepository;
-	
-	@Autowired
-	private SubCategoryRepository subCategoryRepository;
-	
+	/**
+	 * ✅ Create a new subcategory under a budget
+	 */
 	@Transactional
-	public SubCategory save(UserDetails userDetail, SubCategoryRequest subCategoryRequest) throws Exception {
-		User user= userRepository.findByUsername(userDetail.getUsername()).orElseThrow(() -> new UsernameNotFoundException("User Not Found with username: " + userDetail.getUsername()));
+	public SubCategory save(UserDetails userDetail, SubCategoryRequest subCategoryRequest) {
+		User user = userRepository.findByUsername(userDetail.getUsername())
+				.orElseThrow(() -> new UsernameNotFoundException(
+						"User not found with username: " + userDetail.getUsername()
+				));
 
-		boolean categoryExits= categoryRepository.existsByIdAndUserId(subCategoryRequest.getCategoryId(),user.getId());
-		if (!categoryExits) {
-			throw new EntityException("Category not found for parameters category_id:" + subCategoryRequest.getCategoryId());
+		// ✅ Validate Budget
+		Budget budget = budgetRepository.findById(subCategoryRequest.getBudgetId())
+				.orElseThrow(() -> new EntityException(
+						"Budget not found for id: " + subCategoryRequest.getBudgetId()
+				));
+
+		if (!budget.getUser().getId().equals(user.getId())) {
+			throw new EntityException("Budget does not belong to the current user");
 		}
-		Category category=categoryRepository.findById(subCategoryRequest.getCategoryId()).orElseThrow(() -> new Exception("Category not found"));;
-		SubCategory subCategory=new SubCategory();
+
+		// ✅ Create SubCategory
+		SubCategory subCategory = new SubCategory();
 		subCategory.setName(subCategoryRequest.getName());
+		subCategory.setBudget(budget);
 		subCategory.setActive(true);
-		subCategory.setCategory(category);
+
 		return subCategoryRepository.save(subCategory);
 	}
 
+	/**
+	 *  List all subcategories for a given budget
+	 */
 	@Transactional
-	public List<SubCategoryResponse> list(Long categoryId, UserDetails userDetail){
-		User user= userRepository.findByUsername(userDetail.getUsername()).orElseThrow(() -> new UsernameNotFoundException("User Not Found with username: " + userDetail.getUsername()));
+	public List<SubCategory> listByBudget(UserDetails userDetails, Long budgetId) {
+		User user = userRepository.findByUsername(userDetails.getUsername())
+				.orElseThrow(() -> new UsernameNotFoundException(
+						"User not found with username: " + userDetails.getUsername()
+				));
 
-		return subCategoryRepository.listSubCategory(categoryId, user.getId());
+		Budget budget = budgetRepository.findById(budgetId)
+				.orElseThrow(() -> new EntityException("Budget not found for id: " + budgetId));
+
+		if (!budget.getUser().getId().equals(user.getId())) {
+			throw new EntityException("Budget does not belong to the current user");
+		}
+
+		return subCategoryRepository.listSubCategory(budgetId, user.getId());
+
+
 	}
-
 }

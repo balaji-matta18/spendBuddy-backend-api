@@ -1,22 +1,15 @@
 package com.spendbuddy.security.jwt;
 
 import com.spendbuddy.service.UserDetailsImpl;
+import io.jsonwebtoken.*;
+import io.jsonwebtoken.security.Keys;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Component;
-import io.jsonwebtoken.ExpiredJwtException;
-import io.jsonwebtoken.MalformedJwtException;
-import io.jsonwebtoken.UnsupportedJwtException;
-import io.jsonwebtoken.SignatureAlgorithm;
-import io.jsonwebtoken.security.Keys;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.Jwts;
 
-
-
-
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
@@ -25,28 +18,29 @@ public class JwtUtils {
 
   private static final Logger logger = LoggerFactory.getLogger(JwtUtils.class);
 
-  @Value("${app.jwtSecret}")
+  @Value("${spendbuddy.app.jwtSecret}")
   private String jwtSecret;
 
-  @Value("${app.jwtExpirationMs}")
+  @Value("${spendbuddy.app.jwtExpirationMs}")
   private int jwtExpirationMs;
 
   private Key getSigningKey() {
-    byte[] keyBytes = Decoders.BASE64.decode(jwtSecret);
-    return Keys.hmacShaKeyFor(keyBytes);
+    return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
   }
 
+  // ✅ FIX: Store EMAIL instead of username
   public String generateJwtToken(Authentication authentication) {
     UserDetailsImpl userPrincipal = (UserDetailsImpl) authentication.getPrincipal();
 
     return Jwts.builder()
-            .setSubject(userPrincipal.getUsername())
+            .setSubject(userPrincipal.getEmail()) // use email as subject
             .setIssuedAt(new Date())
-            .setExpiration(new Date(new Date().getTime() + jwtExpirationMs))
+            .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
             .signWith(getSigningKey(), SignatureAlgorithm.HS512)
             .compact();
   }
 
+  // ⚠️ Keep the same name (for compatibility) but return EMAIL
   public String getUserNameFromJwtToken(String token) {
     return Jwts.parserBuilder()
             .setSigningKey(getSigningKey())
@@ -58,12 +52,9 @@ public class JwtUtils {
 
   public boolean validateJwtToken(String authToken) {
     try {
-      Jwts.parserBuilder()
-              .setSigningKey(getSigningKey())
-              .build()
-              .parseClaimsJws(authToken);
+      Jwts.parserBuilder().setSigningKey(getSigningKey()).build().parse(authToken);
       return true;
-    } catch (SecurityException | MalformedJwtException e) {
+    } catch (MalformedJwtException e) {
       logger.error("Invalid JWT token: {}", e.getMessage());
     } catch (ExpiredJwtException e) {
       logger.error("JWT token is expired: {}", e.getMessage());
@@ -72,7 +63,6 @@ public class JwtUtils {
     } catch (IllegalArgumentException e) {
       logger.error("JWT claims string is empty: {}", e.getMessage());
     }
-
     return false;
   }
 }

@@ -1,102 +1,30 @@
 package com.spendbuddy.entity.expensetracker;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.spendbuddy.entity.budget.Budget;
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-
-import java.util.Date;
+import lombok.*;
 
 @Entity
-@Table(name = "sub_category")
+@Table(name = "sub_categories")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class SubCategory {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@ManyToOne
-	@JoinColumn(name="category_id")
-	@JsonIgnore
-	private Category category;
-
-	@NotBlank
-	@Size(max = 25)
-	@Column(name = "name")
+	@Column(nullable = false)
 	private String name;
 
-	@Column(name = "is_active")
-	private boolean isActive;
+	// ✅ Each subcategory belongs to one budget
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "budget_id", nullable = false)
+	private Budget budget;
 
-	@Column(name = "created_at")
-	private Date createdAt;
-
-	@Column(name = "updated_at")
-	private Date updatedAt;
-
-	public Long getId() {
-		return id;
-	}
-
-	public void setId(Long id) {
-		this.id = id;
-	}
-
-	public String getName() {
-		return name;
-	}
-
-	public void setName(String name) {
-		this.name = name;
-	}
-
-	public boolean isActive() {
-		return isActive;
-	}
-
-	public void setActive(boolean isActive) {
-		this.isActive = isActive;
-	}
-
-	public Date getCreatedAt() {
-		return createdAt;
-	}
-
-	public void setCreatedAt(Date createdAt) {
-		this.createdAt = createdAt;
-	}
-
-	public Date getUpdatedAt() {
-		return updatedAt;
-	}
-
-	public void setUpdatedAt(Date updatedAt) {
-		this.updatedAt = updatedAt;
-	}
-
-	@PrePersist
-	protected void prePersist() {
-		if (this.createdAt == null)
-			createdAt = new Date();
-		if (this.updatedAt == null)
-			updatedAt = new Date();
-	}
-
-	@PreUpdate
-	protected void preUpdate() {
-		this.updatedAt = new Date();
-	}
-
-	@PreRemove
-	protected void preRemove() {
-		this.updatedAt = new Date();
-	}
-
-	public Category getCategory() {
-		return category;
-	}
-
-	public void setCategory(Category category) {
-		this.category = category;
-	}
+	// ✅ Keeps active/inactive status
+	@Column(nullable = false)
+	private boolean active = true;
 }

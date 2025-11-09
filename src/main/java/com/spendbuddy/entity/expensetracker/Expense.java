@@ -1,144 +1,54 @@
 package com.spendbuddy.entity.expensetracker;
 
-import java.math.BigDecimal;
-import java.util.Date;
-
-
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.spendbuddy.entity.auth.User;
+import com.spendbuddy.entity.budget.Budget;
 import jakarta.persistence.*;
-import org.springframework.format.annotation.DateTimeFormat;
+import lombok.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "expense")
+@Table(name = "expenses")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 public class Expense {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
-	
-	@ManyToOne
-	@JoinColumn(name="category_id")
-	private Category category;
 
-	@ManyToOne
-	@JoinColumn(name="sub_category_id")
-	private SubCategory subCategoryId;
-	
-	@ManyToOne
-	@JoinColumn(name = "payment_type_id")
-	private PaymentType payment;
-	
-	@Column(name="expense_amount")
-	private BigDecimal expenseAmount;
-	@Column(name="expense_desc")
+	private Double expenseAmount;
+
 	private String expenseDescription;
-	@Temporal(TemporalType.DATE)
-	@DateTimeFormat(pattern="dd/MM/yyyy")
-	@Column(name="expense_date")
-	private Date expenseDate;
-	
-	@Temporal(TemporalType.DATE)
-    @DateTimeFormat(pattern="dd/MM/yyyy")
-	@Column(name = "created_at")
-	private Date createdAt;
 
-	@Temporal(TemporalType.DATE)
-    @DateTimeFormat(pattern="dd/MM/yyyy")
-	@Column(name = "updated_at")
-	private Date updatedAt;
-	
-	
-	
-	public Long getId() {
-		return id;
-	}
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "budget_id", nullable = false)
+	@JsonBackReference(value = "budget-expenses") // Prevent recursion
+	private Budget budget;
 
-	public void setId(Long id) {
-		this.id = id;
-	}
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "sub_category_id")
+	private SubCategory subCategory;
 
-	public Category getCategory() {
-		return category;
-	}
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "payment_id", nullable = false)
+	private PaymentType payment;
 
-	public void setCategory(Category category) {
-		this.category = category;
-	}
+	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "user_id", nullable = false)
+	@JsonBackReference(value = "user-expenses") // Prevent recursion
+	private User user;
 
-	public PaymentType getPayment() {
-		return payment;
-	}
+	private LocalDate expenseDate;
 
-	public void setPayment(PaymentType payment) {
-		this.payment = payment;
-	}
-
-	public BigDecimal getExpenseAmount() {
-		return expenseAmount;
-	}
-
-	public void setExpenseAmount(BigDecimal expenseAmount) {
-		this.expenseAmount = expenseAmount;
-	}
-
-	public String getExpenseDescription() {
-		return expenseDescription;
-	}
-
-		
-	public void setExpenseDescription(String expenseDescription) {
-		this.expenseDescription = expenseDescription;
-	}
-
-	public Date getCreatedAt() {
-		return createdAt;
-	}
-
-	public void setCreatedAt(Date createdAt) {
-		this.createdAt = createdAt;
-	}
-
-	public Date getUpdatedAt() {
-		return updatedAt;
-	}
-
-	public void setUpdatedAt(Date updatedAt) {
-		this.updatedAt = updatedAt;
-	}
-
-
-	public SubCategory getSubCategoryId() {
-		return subCategoryId;
-	}
-
-	public void setSubCategoryId(SubCategory subCategoryId) {
-		this.subCategoryId = subCategoryId;
-	}
-
-	public Date getExpenseDate() {
-		return expenseDate;
-	}
-
-	public void setExpenseDate(Date expenseDate) {
-		this.expenseDate = expenseDate;
-	}
-
-	@PrePersist
-	protected void prePersist() {
-		if (this.createdAt == null)
-			createdAt = new Date();
-		if (this.updatedAt == null)
-			updatedAt = new Date();
-	}
+	private LocalDateTime createdAt = LocalDateTime.now();
+	private LocalDateTime updatedAt = LocalDateTime.now();
 
 	@PreUpdate
-	protected void preUpdate() {
-		this.updatedAt = new Date();
+	public void preUpdate() {
+		this.updatedAt = LocalDateTime.now();
 	}
-
-	@PreRemove
-	protected void preRemove() {
-		this.updatedAt = new Date();
-	}
-
-
 }

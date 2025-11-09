@@ -1,0 +1,278 @@
+{
+    "info": {
+        "name": "SpendBuddy Backend API",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "_postman_id": "spendbuddy-backend-collection"
+    },
+    "item": [
+        {
+            "name": "Auth",
+            "item": [
+                {
+                    "name": "Signup",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/signup",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "signup"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"username\": \"Balaji\",\n    \"email\": \"balajim18621@gmail.com\",\n    \"password\": \"000000\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Signin",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/signin",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "signin"
+                            ]
+                        },
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"email\": \"balajim18621@gmail.com\",\n    \"password\": \"000000\"\n}"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Budget",
+            "item": [
+                {
+                    "name": "Get All Budgets",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/budget/all"
+                    }
+                },
+                {
+                    "name": "Create Budget",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/api/budget",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"budgetAmount\": 20000,\n    \"category\": \"Travel\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Update Budget",
+                    "request": {
+                        "method": "PUT",
+                        "url": "{{baseUrl}}/api/budget/1",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"budgetAmount\": 18000,\n    \"category\": \"Updated Travel\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Delete Budget",
+                    "request": {
+                        "method": "DELETE",
+                        "url": "{{baseUrl}}/api/budget/1"
+                    }
+                },
+                {
+                    "name": "Budget Summary",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/budget/summary"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "SubCategory",
+            "item": [
+                {
+                    "name": "Create SubCategory",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/api/subcategory",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Groceries\",\n    \"budgetId\": 2\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "List SubCategories",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/subcategory?budgetId=2"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "PaymentType",
+            "item": [
+                {
+                    "name": "Create PaymentType",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/api/paymenttype",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"UPI\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Get PaymentTypes",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/paymenttype"
+                    }
+                },
+                {
+                    "name": "Update PaymentType",
+                    "request": {
+                        "method": "PUT",
+                        "url": "{{baseUrl}}/api/paymenttype/1",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Credit Card\"\n}"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Expense",
+            "item": [
+                {
+                    "name": "Create Expense",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/api/expense",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"amount\": 700,\n    \"expenseDescription\": \"Dinner at Paradise\",\n    \"paymentTypeId\": 1,\n    \"budgetId\": 2,\n    \"subCategoryId\": 1,\n    \"expenseDate\": \"2025-11-07\"\n}"
+                        }
+                    }
+                },
+                {
+                    "name": "Get All Expenses",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/expense"
+                    }
+                },
+                {
+                    "name": "Get Expenses by Date Range",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/expense?fromDate=2025-11-01&toDate=2025-11-07"
+                    }
+                },
+                {
+                    "name": "Get Current Month Expenses",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/expense/current-month"
+                    }
+                },
+                {
+                    "name": "Get Expenses by Budget",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/expense/budget/2"
+                    }
+                },
+                {
+                    "name": "Get Current Month Expenses by Budget",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/expense/budget/2/current-month"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Dashboard",
+            "item": [
+                {
+                    "name": "Get Stats",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/dashboard/stats"
+                    }
+                },
+                {
+                    "name": "Get Recent Transactions",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/dashboard/recent"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Category (Legacy)",
+            "item": [
+                {
+                    "name": "List Categories",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/category"
+                    }
+                },
+                {
+                    "name": "Create Category",
+                    "request": {
+                        "method": "POST",
+                        "url": "{{baseUrl}}/api/category",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n    \"name\": \"Food\"\n}"
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Test",
+            "item": [
+                {
+                    "name": "Sample API",
+                    "request": {
+                        "method": "GET",
+                        "url": "{{baseUrl}}/api/sample-api"
+                    }
+                }
+            ]
+        }
+    ]
+}
