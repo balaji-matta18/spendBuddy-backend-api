@@ -32,30 +32,11 @@ public class BudgetService {
         this.userRepository = userRepository;
     }
 
-    /**
-     * ✅ Determine the effective financial month based on the user’s preferred start day.
-     * Example: if monthStartDay = 5 and today is 3 Nov → still belongs to October’s budget cycle.
-     */
-//    private YearMonth getEffectiveBudgetMonth(User user) {
-//        int startDay = user.getMonthStartDay() != null ? user.getMonthStartDay() : 1;
-//        LocalDate today = LocalDate.now();
-//
-//        // If today's date is before the start day, consider it as the previous financial month
-//        if (today.getDayOfMonth() < startDay) {
-//            today = today.minusMonths(1);
-//        }
-//
-//        YearMonth effectiveMonth = YearMonth.of(today.getYear(), today.getMonth());
-//        System.out.println("📅 Effective financial month for user '" + user.getUsername() + "' → " + effectiveMonth);
-//        return effectiveMonth;
-//    }
-
+    // Determine effective financial month based on user's monthStartDay
     private YearMonth getEffectiveBudgetMonth(User user) {
         int startDay = user.getMonthStartDay() != null ? user.getMonthStartDay() : 1;
         LocalDate today = LocalDate.now();
 
-        // 👉 If today is *on or after* the start day → it's the *new* month.
-        // If today is *before* the start day → still part of previous month.
         if (today.getDayOfMonth() < startDay) {
             today = today.minusMonths(1);
         }
@@ -63,9 +44,6 @@ public class BudgetService {
         return YearMonth.of(today.getYear(), today.getMonth());
     }
 
-    /**
-     * ✅ Create or update a budget for the user’s current financial month.
-     */
     @Transactional
     public BudgetResponse save(UserDetails userDetails, BudgetRequest request) throws Exception {
         User user = resolveManagedUser(userDetails);
@@ -98,9 +76,6 @@ public class BudgetService {
                 });
     }
 
-    /**
-     * ✅ List budgets for the user’s active financial month.
-     */
     public List<BudgetResponse> list(UserDetails userDetails) {
         User user = resolveManagedUser(userDetails);
         YearMonth currentMonth = getEffectiveBudgetMonth(user);
@@ -116,9 +91,6 @@ public class BudgetService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * ✅ Fetch budgets for a specific month if provided (?month=YYYY-MM).
-     */
     public List<BudgetResponse> listByMonth(UserDetails userDetails, String month) {
         User user = resolveManagedUser(userDetails);
 
@@ -140,9 +112,6 @@ public class BudgetService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * ✅ Monthly summary based on the user's active financial cycle.
-     */
     public List<BudgetSummaryResponse> summary(UserDetails userDetails) {
         User user = resolveManagedUser(userDetails);
         YearMonth currentMonth = getEffectiveBudgetMonth(user);
@@ -163,9 +132,6 @@ public class BudgetService {
         }).collect(Collectors.toList());
     }
 
-    /**
-     * ✅ Delete a budget if it belongs to this user (any financial month).
-     */
     @Transactional
     public void delete(UserDetails userDetails, Long id) throws Exception {
         User user = resolveManagedUser(userDetails);
@@ -174,9 +140,6 @@ public class BudgetService {
         budgetRepository.delete(budget);
     }
 
-    /**
-     * ✅ Update an existing budget for the user’s current financial month.
-     */
     @Transactional
     public BudgetResponse update(UserDetails userDetails, Long id, BudgetRequest request) throws Exception {
         User user = resolveManagedUser(userDetails);
@@ -203,8 +166,40 @@ public class BudgetService {
     }
 
     /**
-     * ✅ Helper: Get the currently authenticated and persisted user entity.
+     * Manual rollover for the currently authenticated user.
+     * Copies budgets from previous financial month → user's current financial month
+     * but only creates new records for categories that don't already exist for the target month.
+     *
+     * Returns number of budgets copied.
      */
+    @Transactional
+    public int rolloverForCurrentUser(UserDetails userDetails) throws Exception {
+        User user = resolveManagedUser(userDetails);
+        YearMonth currentMonth = getEffectiveBudgetMonth(user);
+        YearMonth prevMonth = currentMonth.minusMonths(1);
+
+        List<Budget> prevBudgets = budgetRepository.findByUserAndBudgetMonth(user, prevMonth);
+        int copied = 0;
+
+        for (Budget prev : prevBudgets) {
+            boolean exists = budgetRepository
+                    .findByUserAndCategoryAndBudgetMonth(user, prev.getCategory(), currentMonth)
+                    .isPresent();
+
+            if (!exists) {
+                Budget newBudget = new Budget();
+                newBudget.setUser(user);
+                newBudget.setCategory(prev.getCategory());
+                newBudget.setBudgetAmount(prev.getBudgetAmount());
+                newBudget.setBudgetMonth(currentMonth);
+                budgetRepository.save(newBudget);
+                copied++;
+            }
+        }
+
+        return copied;
+    }
+
     private User resolveManagedUser(UserDetails userDetails) {
         if (userDetails == null || userDetails.getUsername() == null) {
             throw new IllegalStateException("No authenticated user available");

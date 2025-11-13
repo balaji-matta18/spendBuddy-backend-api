@@ -14,7 +14,9 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/budget")
@@ -30,17 +32,23 @@ public class BudgetController {
     }
 
     /**
-     * ✅ Manual trigger for monthly budget rollover (useful for user confirmation or testing)
+     * Manual trigger for monthly budget rollover (copies previous financial month budgets
+     * to current financial month for the authenticated user). Returns JSON with count.
      */
     @PostMapping("/rollover")
-    public ResponseEntity<String> triggerRollover() {
-        monthlyBudgetScheduler.rolloverBudgets();
-        return ResponseEntity.ok("✅ Manual rollover executed successfully!");
+    public ResponseEntity<?> triggerRollover(@AuthenticationPrincipal UserDetails userDetails) {
+        try {
+            int copied = budgetService.rolloverForCurrentUser(userDetails);
+            Map<String, Object> resp = new HashMap<>();
+            resp.put("copied", copied);
+            resp.put("message", copied > 0 ? "Copied " + copied + " budgets." : "Nothing to copy.");
+            return ResponseEntity.ok(resp);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
+        }
     }
 
-    /**
-     * ✅ Create or update if category already exists (for user’s current financial month)
-     */
     @PostMapping
     public ResponseEntity<?> createOrUpdateBudget(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -49,15 +57,10 @@ public class BudgetController {
             BudgetResponse resp = budgetService.save(userDetails, request);
             return ResponseEntity.ok(resp);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("❌ " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 
-    /**
-     * ✅ Fetch budgets for the logged-in user
-     * - Supports optional query param ?month=YYYY-MM
-     * - If omitted, automatically uses user’s financial month based on monthStartDay.
-     */
     @GetMapping("/all")
     public ResponseEntity<?> listBudgets(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -66,29 +69,17 @@ public class BudgetController {
             List<BudgetResponse> result;
             if (month != null && !month.isBlank()) {
                 result = budgetService.listByMonth(userDetails, month);
-                System.out.println("📊 Listing budgets for requested month: " + month);
             } else {
                 result = budgetService.list(userDetails);
-                System.out.println("📅 Listing budgets for user’s active financial month.");
             }
-
-            if (result.isEmpty()) {
-                return ResponseEntity.ok(List.of()); // Return empty list instead of null
-            }
-
             return ResponseEntity.ok(result);
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("⚠️ " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("❌ Failed to fetch budgets. " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(e.getMessage());
         }
     }
 
-    /**
-     * ✅ Dashboard summary (category + budget + spent)
-     * Automatically uses financial month logic.
-     */
     @GetMapping("/summary")
     public ResponseEntity<?> getSummary(@AuthenticationPrincipal UserDetails userDetails) {
         try {
@@ -96,13 +87,10 @@ public class BudgetController {
             return ResponseEntity.ok(summary);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("❌ Failed to load budget summary: " + e.getMessage());
+                    .body("Failed to load budget summary: " + e.getMessage());
         }
     }
 
-    /**
-     * ✅ Update ONLY the budget amount (category name is locked)
-     */
     @PutMapping("/{id}")
     public ResponseEntity<?> updateBudgetAmount(
             @AuthenticationPrincipal UserDetails userDetails,
@@ -112,22 +100,19 @@ public class BudgetController {
             BudgetResponse resp = budgetService.update(userDetails, id, request);
             return ResponseEntity.ok(resp);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("❌ " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 
-    /**
-     * ✅ Delete budget by ID (only if owned by this user)
-     */
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteBudget(
             @AuthenticationPrincipal UserDetails userDetails,
             @PathVariable Long id) {
         try {
             budgetService.delete(userDetails, id);
-            return ResponseEntity.ok("🗑️ Budget deleted successfully!");
+            return ResponseEntity.ok(Map.of("message", "Budget deleted"));
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("❌ " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }
 }
