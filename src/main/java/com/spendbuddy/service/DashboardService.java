@@ -39,54 +39,66 @@ public class DashboardService {
     }
 
     /**
-     * Get current dashboard statistics for the logged-in user
+     * ✅ Get current dashboard statistics (respects user’s custom month start day)
      */
     public StatsResponse getStats(UserDetails userDetails) {
         User user = userRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new IllegalStateException("User not found"));
 
-        // --- Total Budget ---
-        List<Budget> budgets = budgetRepository.findByUser(user);
-        double totalBudget = budgets.stream()
+        int monthStartDay = user.getMonthStartDay() != null ? user.getMonthStartDay() : 1;
+        LocalDate today = LocalDate.now();
+
+        // --- Calculate user's custom month range safely ---
+        LocalDate calculatedStart = today.withDayOfMonth(
+                Math.min(monthStartDay, today.lengthOfMonth())
+        );
+
+        if (today.getDayOfMonth() < monthStartDay) {
+            calculatedStart = calculatedStart.minusMonths(1);
+        }
+
+        final LocalDate startOfMonth = calculatedStart;
+        final LocalDate endOfMonth = startOfMonth.plusMonths(1).minusDays(1);
+
+        // --- Previous month range based on same logic ---
+        final LocalDate prevEnd = startOfMonth.minusDays(1);
+        final LocalDate prevStart = prevEnd.minusMonths(1).plusDays(1);
+
+        YearMonth currentYm = YearMonth.from(startOfMonth);
+        YearMonth prevYm = currentYm.minusMonths(1);
+
+        int daysElapsed = (int) (today.toEpochDay() - startOfMonth.toEpochDay()) + 1;
+        int daysInPrevMonth = (int) (prevEnd.toEpochDay() - prevStart.toEpochDay()) + 1;
+
+        // --- Fetch budgets for current and previous months ---
+        List<Budget> currentBudgets = budgetRepository.findByUserAndBudgetMonth(user, currentYm);
+        List<Budget> prevBudgets = budgetRepository.findByUserAndBudgetMonth(user, prevYm);
+
+        // --- Calculate total budget amounts ---
+        double totalBudget = currentBudgets.stream()
                 .filter(b -> b.getBudgetAmount() != null)
                 .mapToDouble(Budget::getBudgetAmount)
                 .sum();
 
-        // --- All Expenses ---
+        double prevTotalBudget = prevBudgets.stream()
+                .filter(b -> b.getBudgetAmount() != null)
+                .mapToDouble(Budget::getBudgetAmount)
+                .sum();
+
+        // --- Fetch user's expenses ---
         List<Expense> allExpenses = expenseRepository.findByUser(user);
 
-        // --- Current and Previous Month Ranges ---
-        LocalDate today = LocalDate.now();
-        YearMonth currentYm = YearMonth.from(today);
-        YearMonth prevYm = currentYm.minusMonths(1);
-
-        LocalDate startOfMonth = currentYm.atDay(1);
-        LocalDate endOfMonth = currentYm.atEndOfMonth();
-        LocalDate prevStart = prevYm.atDay(1);
-        LocalDate prevEnd = prevYm.atEndOfMonth();
-
-        int daysElapsed = today.getDayOfMonth();
-        int daysInPrevMonth = prevYm.lengthOfMonth();
-
-        // --- Current Month Expenses ---
+        // --- Current month expenses ---
         double currentExpenses = allExpenses.stream()
                 .filter(e -> e.getExpenseDate() != null)
-                .filter(e -> {
-                    LocalDate date = e.getExpenseDate();
-                    // Inclusive comparison for current month
-                    return (date.isAfter(startOfMonth.minusDays(1)) && date.isBefore(endOfMonth.plusDays(1)));
-                })
+                .filter(e -> !e.getExpenseDate().isBefore(startOfMonth) && !e.getExpenseDate().isAfter(endOfMonth))
                 .mapToDouble(e -> e.getExpenseAmount() == null ? 0.0 : e.getExpenseAmount())
                 .sum();
 
-        // --- Previous Month Expenses (FIXED FILTERING) ---
+        // --- Previous month expenses ---
         double prevExpenses = allExpenses.stream()
                 .filter(e -> e.getExpenseDate() != null)
-                .filter(e -> {
-                    LocalDate date = e.getExpenseDate();
-                    // Inclusive comparison for previous month
-                    return (date.isAfter(prevStart.minusDays(1)) && date.isBefore(prevEnd.plusDays(1)));
-                })
+                .filter(e -> !e.getExpenseDate().isBefore(prevStart) && !e.getExpenseDate().isAfter(prevEnd))
                 .mapToDouble(e -> e.getExpenseAmount() == null ? 0.0 : e.getExpenseAmount())
                 .sum();
 
@@ -96,20 +108,9 @@ public class DashboardService {
 
         // --- Savings ---
         double savings = totalBudget - currentExpenses;
-
-        // --- Previous Total Budget (up to prev month end) ---
-        double prevTotalBudget = budgets.stream()
-                .filter(b -> {
-                    if (b.getCreatedAt() == null) return true;
-                    return !b.getCreatedAt().toLocalDate().isAfter(prevEnd);
-                })
-                .filter(b -> b.getBudgetAmount() != null)
-                .mapToDouble(Budget::getBudgetAmount)
-                .sum();
-
         double prevSavings = prevTotalBudget - prevExpenses;
 
-        // --- Calculate % Changes ---
+        // --- Percentage changes ---
         String balanceChange = formatChange(totalBudget, prevTotalBudget);
         String expensesChange = formatChange(currentExpenses, prevExpenses);
         String spendingsChange = formatChange(avgDaily, avgPrevDaily);
@@ -131,7 +132,7 @@ public class DashboardService {
     }
 
     /**
-     * Return last 5 recent transactions
+     * ✅ Return last 5 recent transactions
      */
     public List<ExpenseResponse> getRecentTransactions(UserDetails userDetails) {
         User user = userRepository.findByUsername(userDetails.getUsername())

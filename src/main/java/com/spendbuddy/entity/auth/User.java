@@ -1,5 +1,6 @@
 package com.spendbuddy.entity.auth;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import com.spendbuddy.entity.expensetracker.Expense;
 import jakarta.persistence.*;
@@ -15,21 +16,20 @@ import java.util.Set;
 @AllArgsConstructor
 public class User {
 
-
-
 	public User(String username, String email, String password) {
 		this.username = username;
 		this.email = email;
 		this.password = password;
 	}
 
-
 	@Id
-	// @GeneratedValue(strategy = GenerationType.UUID)
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
+
 	private String username;
 	private String email;
+
+	@JsonIgnore
 	private String password;
 
 	@ManyToMany(fetch = FetchType.EAGER)
@@ -39,6 +39,10 @@ public class User {
 	private Set<Role> roles;
 
 	@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-	@JsonManagedReference(value = "user-expenses") // Forward part of user-expense relation
+	@JsonManagedReference(value = "user-expenses")
 	private List<Expense> expenses;
+
+	// ✅ New field: allows each user to set their custom month start day (1–28)
+	@Column(name = "month_start_day")
+	private Integer monthStartDay = 1; // Default to 1st of the month
 }
